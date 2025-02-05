@@ -36,20 +36,23 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
+// Body parser middleware
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Health check endpoint
-app.get('/api/health', (req, res) => {
+app.get('/', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 // API Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/questions', questionRoutes);
-app.use('/api/answers', answerRoutes);
-app.use('/api/badges', badgeRoutes);
-app.use('/api/chatbot', chatbotRoutes);
+app.use('/auth', authRoutes);
+app.use('/users', userRoutes);
+app.use('/questions', questionRoutes);
+app.use('/answers', answerRoutes);
+app.use('/badges', badgeRoutes);
+app.use('/chatbot', chatbotRoutes);
 
 const PORT = parseInt(process.env.PORT || '3000', 10);
 

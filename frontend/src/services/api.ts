@@ -1,45 +1,33 @@
 import axios from 'axios';
 import type { User, EmployeeFormData, Question } from '../types';
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
-
 const api = axios.create({
-  baseURL: BASE_URL,
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000/api',
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true
 });
 
-// Add request interceptor to include token
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  console.log('Request interceptor - Token:', token);
-  
-  if (token) {
-    // Check if token already has Bearer prefix
-    config.headers.Authorization = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
-  }
-  return config;
-}, (error) => {
-  console.error('Request interceptor error:', error);
-  return Promise.reject(error);
-});
-
-// Add response interceptor to handle errors
-api.interceptors.response.use(
-  (response) => {
-    console.log('Response interceptor - Success:', response.config.url);
-    return response;
+// Request interceptor
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
   },
   (error) => {
-    console.error('API Error:', error.response?.status, error.response?.data);
-    
-    // Only redirect to login if it's an auth error and we're not already on the login page
-    if (error.response?.status === 401 && !window.location.pathname.includes('/login')) {
-      console.log('Unauthorized access, redirecting to login...');
-      localStorage.removeItem('token');
-      window.location.href = '/login';
-    }
+    return Promise.reject(error);
+  }
+);
+
+// Response interceptor
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    console.error('API Error:', error);
     return Promise.reject(error);
   }
 );
