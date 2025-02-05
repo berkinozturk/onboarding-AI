@@ -1,14 +1,14 @@
 import { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import AdminDashboard from '../../src/pages/admin/Dashboard';
-import AdminEmployees from '../../src/pages/admin/Employees';
-import AdminChatbot from '../../src/pages/admin/Chatbot';
-import EmployeeOnboarding from '../../src/pages/employee/Onboarding';
-import EmployeeProfile from '../../src/pages/employee/Profile';
-import ChatbotBuddy from '../../src/pages/employee/ChatbotBuddy';
-import Login from '../../src/pages/Login';
-import { useStore } from '../../src/store';
+import AdminDashboard from './pages/admin/Dashboard';
+import AdminEmployees from './pages/admin/Employees';
+import AdminChatbot from './pages/admin/Chatbot';
+import EmployeeOnboarding from './pages/employee/Onboarding';
+import EmployeeProfile from './pages/employee/Profile';
+import ChatbotBuddy from './pages/employee/ChatbotBuddy';
+import Login from './pages/Login';
+import { useStore } from './store';
 
 const queryClient = new QueryClient();
 

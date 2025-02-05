@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useStore } from '../../store';
-import type { Question } from '../../types';
+import type { Question } from '../../../../src/types';
 
 interface QuestionFormProps {
   onSuccess?: () => void;

@@ -1,9 +1,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, Send } from 'lucide-react';
-import type { Question } from '../../types';
+import type { Question } from '../../../../src/types';
 import { useStore } from '../../store';
-import { api } from '../../services/api';
+import { api } from '../../../../src/services/api';
 
 export default function ChatInterface() {
   const [textAnswer, setTextAnswer] = useState('');

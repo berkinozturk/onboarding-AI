@@ -3,7 +3,7 @@ import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea
 import { useStore } from '../../store';
 import { PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
 import Layout from '../../components/shared/Layout';
-import type { Question } from '../../types';
+import type { Question } from '../../../../src/types';
 
 export default function ChatbotConfig() {
   const questions = useStore((state) => state.questions);

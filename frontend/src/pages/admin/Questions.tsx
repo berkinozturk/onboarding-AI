@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../../store';
 import QuestionForm from '../../components/admin/QuestionForm';
-import type { Question } from '../../types';
+import type { Question } from '../../../../src/types';
 import { Edit2, Trash2, Plus } from 'lucide-react';
 
 export default function Questions() {
