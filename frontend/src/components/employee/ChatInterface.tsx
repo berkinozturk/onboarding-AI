@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, Send } from 'lucide-react';
 import type { Question } from '../../types';
 import { useStore } from '../../store';
-import { api } from '../../../../src/services/api';
+import { api } from '../../services/api';
 
 export default function ChatInterface() {
   const [textAnswer, setTextAnswer] = useState('');
