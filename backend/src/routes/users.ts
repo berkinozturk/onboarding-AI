@@ -9,6 +9,8 @@ interface AuthRequest extends Request {
     id: string;
     role: string;
   };
+  body: any;
+  params: any;
 }
 
 const router = express.Router();

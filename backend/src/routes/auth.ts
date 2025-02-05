@@ -9,6 +9,8 @@ interface AuthRequest extends Request {
     id: string;
     role: string;
   };
+  body: any;
+  params: any;
 }
 
 const router = express.Router();
@@ -121,6 +123,7 @@ const register: RequestHandler = async (req, res) => {
 const login: RequestHandler = async (req, res) => {
   try {
     const { email, password } = req.body;
+    console.log('Login attempt:', { email }); // Email'i logluyoruz
 
     // Find user
     const user = await prisma.user.findUnique({
@@ -139,14 +142,19 @@ const login: RequestHandler = async (req, res) => {
       }
     });
 
+    console.log('User found:', user ? 'Yes' : 'No'); // Kullanıcının bulunup bulunmadığını logluyoruz
+
     if (!user) {
+      console.log('User not found with email:', email);
       return res.status(401).json({ error: 'Invalid login credentials' });
     }
 
     // Check password
     const isPasswordValid = await bcrypt.compare(password, user.password);
+    console.log('Password valid:', isPasswordValid); // Şifrenin doğru olup olmadığını logluyoruz
 
     if (!isPasswordValid) {
+      console.log('Invalid password for user:', email);
       return res.status(401).json({ error: 'Invalid login credentials' });
     }
 
