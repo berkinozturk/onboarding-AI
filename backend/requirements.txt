@@ -1,0 +1,9 @@
+numpy
+langchain
+langchain-community
+langchain-core
+langchain-openai
+faiss-cpu
+python-dotenv
+pypdf
+tiktoken 
