@@ -2,7 +2,7 @@ import axios from 'axios';
 import type { User, EmployeeFormData, Question } from '../types';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000/api',
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -14,7 +14,7 @@ api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+      config.headers.Authorization = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
     }
     return config;
   },
@@ -28,6 +28,10 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     console.error('API Error:', error);
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+    }
     return Promise.reject(error);
   }
 );
@@ -37,22 +41,38 @@ export const authApi = {
     try {
       console.log('Attempting login...');
       const response = await api.post('/auth/login', { email, password });
-      console.log('Login successful:', response.data);
+      console.log('Login response:', response.data);
       
-      // Store the token with Bearer prefix
       if (response.data.token) {
         const token = response.data.token.startsWith('Bearer ') ? 
           response.data.token : 
           `Bearer ${response.data.token}`;
+        console.log('Setting token:', token);
         localStorage.setItem('token', token);
       }
       
       return response.data;
     } catch (error) {
       console.error('Login failed:', error);
+      localStorage.removeItem('token');
       throw error;
     }
   },
+  
+  getCurrentUser: async () => {
+    try {
+      const token = localStorage.getItem('token');
+      console.log('Getting current user with token:', token);
+      const response = await api.get('/auth/me');
+      console.log('Current user response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Get current user failed:', error);
+      localStorage.removeItem('token');
+      throw error;
+    }
+  },
+
   register: async (data: EmployeeFormData) => {
     const response = await api.post('/auth/register', data);
     return response.data;
