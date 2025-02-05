@@ -15,32 +15,6 @@ const queryClient = new QueryClient();
 
 function ProtectedRoute({ children, requiredRole }: { children: React.ReactNode; requiredRole: 'admin' | 'employee' }) {
   const user = useStore((state) => state.user);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          setIsLoading(false);
-          return;
-        }
-        
-        const currentUser = await authApi.getCurrentUser();
-        useStore.getState().setUser(currentUser);
-      } catch (error) {
-        console.error('Auth check failed:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    checkAuth();
-  }, []);
-
-  if (isLoading) {
-    return <div>Loading...</div>;
-  }
 
   if (!user) {
     return <Navigate to="/login" replace />;
@@ -55,29 +29,32 @@ function ProtectedRoute({ children, requiredRole }: { children: React.ReactNode;
 
 function App() {
   const user = useStore((state) => state.user);
-  const initializeStore = useStore((state) => state.initializeStore);
-  const initializeQuestions = useStore((state) => state.initializeQuestions);
-  const [isInitializing, setIsInitializing] = useState(true);
+  const setUser = useStore((state) => state.setUser);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const initializeApp = async () => {
       try {
-        console.log('Initializing app...');
-        await initializeStore();
-        await initializeQuestions();
-        console.log('App initialized');
+        const token = localStorage.getItem('token');
+        if (token) {
+          const currentUser = await authApi.getCurrentUser();
+          setUser(currentUser);
+        }
       } catch (error) {
-        console.error('App initialization failed:', error);
+        console.error('Auth check failed:', error);
+        localStorage.removeItem('token');
       } finally {
-        setIsInitializing(false);
+        setIsLoading(false);
       }
     };
 
     initializeApp();
-  }, [initializeStore, initializeQuestions]);
+  }, [setUser]);
 
-  if (isInitializing) {
-    return <div>Loading...</div>;
+  if (isLoading) {
+    return <div className="flex items-center justify-center min-h-screen">
+      <div className="text-lg">Loading...</div>
+    </div>;
   }
 
   return (
