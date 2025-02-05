@@ -134,7 +134,7 @@ router.put('/reorder', auth, adminAuth, (async (req: Request, res: Response): Pr
 }) as RequestHandler);
 
 // Update a question
-router.put('/:id', auth, adminAuth, (async (req: Request, res: Response): Promise<void> => {
+router.put('/:id', auth, adminAuth, (async (req: Request, res: Response): Promise<any> => {
   try {
     const { id } = req.params;
     const { options, ...otherData } = req.body;
@@ -173,7 +173,7 @@ router.put('/:id', auth, adminAuth, (async (req: Request, res: Response): Promis
 }) as RequestHandler);
 
 // Delete a question
-router.delete('/:id', auth, adminAuth, (async (req: Request, res: Response): Promise<void> => {
+router.delete('/:id', auth, adminAuth, (async (req: Request, res: Response): Promise<any> => {
   try {
     const { id } = req.params;
     console.log(`DELETE /questions/${id} - Deleting question`);
@@ -218,7 +218,7 @@ router.delete('/:id', auth, adminAuth, (async (req: Request, res: Response): Pro
 }) as RequestHandler);
 
 // Add a new question
-router.post('/', auth, adminAuth, (async (req: Request, res: Response): Promise<void> => {
+router.post('/', auth, adminAuth, (async (req: Request, res: Response): Promise<any> => {
   try {
     console.log('POST /questions - Creating new question:', req.body);
     

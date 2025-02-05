@@ -138,7 +138,10 @@ router.post('/chat', async (req: Request, res: Response) => {
     if (!isInitialized || !chatbotProcess) {
       // Try to initialize if not initialized
       try {
-        await router.post('/init', req, res as any);
+        await initializeChatbot();
+        if (!isInitialized) {
+          return res.status(400).json({ success: false, error: 'Chatbot initialization failed' });
+        }
       } catch (error) {
         return res.status(400).json({ success: false, error: 'Chatbot initialization failed' });
       }
@@ -207,5 +210,99 @@ router.post('/chat', async (req: Request, res: Response) => {
     }
   }
 });
+
+// Helper function to initialize chatbot
+async function initializeChatbot() {
+  if (initializationPromise) {
+    return initializationPromise;
+  }
+
+  if (chatbotProcess && isInitialized) {
+    return Promise.resolve();
+  }
+
+  if (chatbotProcess) {
+    chatbotProcess.kill();
+    chatbotProcess = null;
+    isInitialized = false;
+  }
+
+  console.log('Initializing chatbot...');
+  const scriptPath = path.join(__dirname, '../../chatbot_service/chatbot.py');
+  console.log('Script path:', scriptPath);
+
+  if (!require('fs').existsSync(scriptPath)) {
+    throw new Error(`Python script not found at: ${scriptPath}`);
+  }
+
+  initializationPromise = new Promise((resolve, reject) => {
+    try {
+      chatbotProcess = spawn('python3', [scriptPath], { 
+        stdio: ['pipe', 'pipe', 'pipe']
+      });
+
+      let output = '';
+      let error = '';
+      let initializationTimeout: NodeJS.Timeout;
+
+      chatbotProcess.stdout.on('data', (data: Buffer) => {
+        const text = data.toString();
+        console.log('Python output:', text);
+        output += text;
+        
+        if (text.includes('Chatbot initialized successfully')) {
+          isInitialized = true;
+          clearTimeout(initializationTimeout);
+          resolve(true);
+        }
+      });
+
+      chatbotProcess.stderr.on('data', (data: Buffer) => {
+        const text = data.toString();
+        console.error('Python error:', text);
+        error += text;
+      });
+
+      chatbotProcess.on('close', (code: number) => {
+        console.log('Python process closed with code:', code);
+        if (!isInitialized) {
+          isInitialized = false;
+          chatbotProcess = null;
+          clearTimeout(initializationTimeout);
+          reject(new Error(error || 'Failed to initialize chatbot'));
+        }
+      });
+
+      chatbotProcess.on('error', (err: Error) => {
+        console.error('Process error:', err);
+        chatbotProcess = null;
+        isInitialized = false;
+        clearTimeout(initializationTimeout);
+        reject(err);
+      });
+
+      initializationTimeout = setTimeout(() => {
+        if (!isInitialized) {
+          chatbotProcess?.kill();
+          chatbotProcess = null;
+          isInitialized = false;
+          reject(new Error('Initialization timeout'));
+        }
+      }, 30000);
+
+      chatbotProcess.stdin.write('initialize\n');
+
+    } catch (error) {
+      reject(error);
+    }
+  });
+
+  try {
+    await initializationPromise;
+    return true;
+  } finally {
+    initializationPromise = null;
+  }
+}
 
 export default router; 
