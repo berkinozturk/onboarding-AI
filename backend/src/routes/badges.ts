@@ -18,13 +18,15 @@ router.get('/', auth, async (req, res) => {
 // Create badge (admin only)
 router.post('/', auth, adminAuth, async (req, res) => {
   try {
-    const { name, description, image } = req.body;
+    const { name, description, image, icon, requiredXP } = req.body;
 
     const badge = await prisma.badge.create({
       data: {
         name,
         description,
-        image
+        image,
+        icon,
+        requiredXP: requiredXP || 0
       }
     });
 
@@ -38,14 +40,16 @@ router.post('/', auth, adminAuth, async (req, res) => {
 router.put('/:id', auth, adminAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, description, image } = req.body;
+    const { name, description, image, icon, requiredXP } = req.body;
 
     const badge = await prisma.badge.update({
       where: { id },
       data: {
         name,
         description,
-        image
+        image,
+        icon,
+        requiredXP: requiredXP || 0
       }
     });
 
