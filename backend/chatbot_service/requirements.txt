@@ -7,3 +7,7 @@ faiss-cpu
 python-dotenv
 pypdf
 tiktoken 
+jina
+openai
+pandas
+scikit-learn
