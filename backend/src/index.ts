@@ -12,29 +12,31 @@ dotenv.config();
 
 const app = express();
 
+// Log all incoming requests in production
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`, {
+    body: req.body,
+    query: req.query,
+    headers: {
+      authorization: req.headers.authorization ? 'present' : 'missing',
+      'content-type': req.headers['content-type'],
+      'origin': req.headers.origin
+    }
+  });
+  next();
+});
+
 // Middleware
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'https://baiby-onboarding-zr1g.onrender.com' || 'http://localhost:5173',
+  origin: [
+    'https://baiby-onboarding-zr1g.onrender.com',
+    'http://localhost:5173'
+  ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
-
-// Debug middleware (only in development)
-if (process.env.NODE_ENV !== 'production') {
-  app.use((req, res, next) => {
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`, {
-      body: req.body,
-      query: req.query,
-      headers: {
-        authorization: req.headers.authorization ? 'present' : 'missing',
-        'content-type': req.headers['content-type']
-      }
-    });
-    next();
-  });
-}
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
