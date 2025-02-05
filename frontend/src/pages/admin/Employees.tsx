@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Layout from '../../components/shared/Layout';
 import { User as UserIcon, UserPlus, Edit, Trash2, X, Search, Eye, EyeOff } from 'lucide-react';
 import { useStore } from '../../store';
-import type { User, EmployeeFormData } from '../../../../src/types';
+import type { User, EmployeeFormData } from '../../types';
 
 const initialFormData: EmployeeFormData = {
   name: '',

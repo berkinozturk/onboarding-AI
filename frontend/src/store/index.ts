@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
-import type { User, Question, Badge, EmployeeFormData } from '../../../src/types';
+import type { User, Question, Badge, EmployeeFormData } from '../types';
 import { api, authApi } from '../services/api';
 
 interface AppState {

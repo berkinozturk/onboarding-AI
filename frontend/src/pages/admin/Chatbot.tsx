@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import Layout from '../../components/shared/Layout';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { GripVertical, Plus, Edit, Trash2, X } from 'lucide-react';
-import type { Question, Badge } from '../../../../src/types';
+import type { Question, Badge } from '../../types';
 import { useStore } from '../../store';
 
 const questionCategories = ['General', 'Policies', 'Culture', 'Safety', 'Equipment', 'Team Building', 'Office Navigation'];

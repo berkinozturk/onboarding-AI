@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, Send } from 'lucide-react';
-import type { Question } from '../../../../src/types';
+import type { Question } from '../../types';
 import { useStore } from '../../store';
 import { api } from '../../../../src/services/api';
 
