@@ -35,7 +35,7 @@ class ChatbotService:
         
     def initialize(self):
         """Initialize the chatbot by building vectorstore and setting up chain"""
-        try:
+    try:
             print("Starting initialization...")
             vectorstore = self.build_vectorstore()
             print("Vector store built successfully")
@@ -60,28 +60,28 @@ class ChatbotService:
                 path=pdf_directory,
                 glob='**/*.pdf',
                 recursive=True
-            )
+        )
             documents = loader.load()
             
             if not documents:
                 raise Exception(f"No PDF documents found in: {pdf_directory}")
-                
+        
             print(f"Loaded {len(documents)} documents")
-            
+        
             text_splitter = RecursiveCharacterTextSplitter(
                 chunk_size=100,
                 chunk_overlap=20
-            )
+        )
             split_documents = text_splitter.split_documents(documents)
             
             if not split_documents:
                 raise Exception("No text content found in documents")
                 
             print(f"Created {len(split_documents)} text chunks")
-            
+        
             vectorstore = FAISS.from_documents(split_documents, self.embeddings)
             return vectorstore
-        except Exception as e:
+    except Exception as e:
             print(f"Error in build_vectorstore: {str(e)}")
             traceback.print_exc()
             raise
@@ -90,7 +90,7 @@ class ChatbotService:
         """Setup the retrieval chain for question answering"""
         try:
             retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
-            
+
             # Sadece LLM filtresini kullan
             context_filter = LLMChainFilter.from_llm(self.llm)
             
@@ -160,25 +160,25 @@ def main():
     
     try:
         chatbot = ChatbotService()
-        
-        while True:
-            try:
+
+    while True:
+        try:
                 question = input().strip()
                 if not question:
-                    continue
-                    
+                continue
+                
                 response = chatbot.get_response(question)
                 print(response)
                 sys.stdout.flush()
-                    
+            
             except EOFError:
                 break
             except Exception as e:
                 print(f"Error processing question: {str(e)}")
                 traceback.print_exc()
-                sys.stdout.flush()
-                
-    except Exception as e:
+            sys.stdout.flush()
+            
+        except Exception as e:
         print(f"Fatal error: {str(e)}")
         traceback.print_exc()
         sys.exit(1)
