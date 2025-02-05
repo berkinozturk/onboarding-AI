@@ -11,5 +11,3 @@ jina
 openai
 pandas
 scikit-learn
-grpcio
-protobuf
