@@ -29,8 +29,11 @@ app.use((req, res, next) => {
 // Middleware
 app.use(cors({
   origin: [
-    'https://baiby-onboarding-zr1g.onrender.com',
-    'http://localhost:5173'
+    'http://v2202502134357312899.happysrv.de',
+    'http://v2202502134357312899.happysrv.de:5173',
+    'http://v2202502134357312899.happysrv.de:3000',
+    'http://localhost:5173',
+    'http://localhost:3000'
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
