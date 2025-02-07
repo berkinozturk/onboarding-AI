@@ -12,6 +12,10 @@ dotenv.config();
 
 const app = express();
 
+// Body parser middleware
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
 // Log all incoming requests
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`, {
@@ -40,9 +44,7 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Body parser middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+
 
 // Health check endpoint
 app.get('/', (req, res) => {
@@ -50,12 +52,12 @@ app.get('/', (req, res) => {
 });
 
 // API Routes
-app.use('/auth', authRoutes);
-app.use('/users', userRoutes);
-app.use('/questions', questionRoutes);
-app.use('/answers', answerRoutes);
-app.use('/badges', badgeRoutes);
-app.use('/chatbot', chatbotRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/questions', questionRoutes);
+app.use('/api/answers', answerRoutes);
+app.use('/api/badges', badgeRoutes);
+app.use('/api/chatbot', chatbotRoutes);
 
 const PORT = parseInt(process.env.PORT || '3000', 10);
 
