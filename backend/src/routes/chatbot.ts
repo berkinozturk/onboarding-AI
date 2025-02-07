@@ -48,37 +48,37 @@ router.post('/init', async (req: Request, res: Response) => {
 
     initializationPromise = new Promise((resolve, reject) => {
       try {
-        // Start Python process
+    // Start Python process
         chatbotProcess = spawn('python3', [scriptPath], { 
           stdio: ['pipe', 'pipe', 'pipe']
         });
 
-        let output = '';
-        let error = '';
+    let output = '';
+    let error = '';
         let initializationTimeout: NodeJS.Timeout;
 
-        // Set up event handlers
-        chatbotProcess.stdout.on('data', (data: Buffer) => {
-          const text = data.toString();
-          console.log('Python output:', text);
-          output += text;
-          
+    // Set up event handlers
+    chatbotProcess.stdout.on('data', (data: Buffer) => {
+      const text = data.toString();
+      console.log('Python output:', text);
+      output += text;
+      
           // Check for successful initialization
-          if (text.includes('Chatbot initialized successfully')) {
-            isInitialized = true;
+      if (text.includes('Chatbot initialized successfully')) {
+        isInitialized = true;
             clearTimeout(initializationTimeout);
             resolve({ success: true, message: 'Chatbot initialized successfully' });
-          }
-        });
+      }
+    });
 
-        chatbotProcess.stderr.on('data', (data: Buffer) => {
-          const text = data.toString();
-          console.error('Python error:', text);
-          error += text;
-        });
+    chatbotProcess.stderr.on('data', (data: Buffer) => {
+      const text = data.toString();
+      console.error('Python error:', text);
+      error += text;
+    });
 
-        chatbotProcess.on('close', (code: number) => {
-          console.log('Python process closed with code:', code);
+    chatbotProcess.on('close', (code: number) => {
+      console.log('Python process closed with code:', code);
           if (!isInitialized) {
             isInitialized = false;
             chatbotProcess = null;
@@ -89,11 +89,11 @@ router.post('/init', async (req: Request, res: Response) => {
 
         chatbotProcess.on('error', (err: Error) => {
           console.error('Process error:', err);
-          chatbotProcess = null;
-          isInitialized = false;
+      chatbotProcess = null;
+      isInitialized = false;
           clearTimeout(initializationTimeout);
           reject(err);
-        });
+    });
 
         // Set timeout for initialization
         initializationTimeout = setTimeout(() => {
@@ -105,12 +105,12 @@ router.post('/init', async (req: Request, res: Response) => {
           }
         }, 30000);
 
-        // Send initialization command
-        chatbotProcess.stdin.write('initialize\n');
+    // Send initialization command
+    chatbotProcess.stdin.write('initialize\n');
 
       } catch (error) {
         reject(error);
-      }
+    }
     });
 
     const result = await initializationPromise;
@@ -206,8 +206,8 @@ router.post('/chat', async (req: Request, res: Response) => {
         error: 'OpenAI API quota exceeded. Please check your billing details.'
       });
     } else {
-      res.status(500).json({ success: false, error: error.message });
-    }
+    res.status(500).json({ success: false, error: error.message });
+  }
   }
 });
 
@@ -295,7 +295,7 @@ async function initializeChatbot() {
     } catch (error) {
       reject(error);
     }
-  });
+});
 
   try {
     await initializationPromise;
