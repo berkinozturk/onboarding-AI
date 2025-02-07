@@ -35,7 +35,7 @@ class ChatbotService:
         
     def initialize(self):
         """Initialize the chatbot by building vectorstore and setting up chain"""
-    try:
+        try:
             print("Starting initialization...")
             vectorstore = self.build_vectorstore()
             print("Vector store built successfully")
@@ -81,7 +81,7 @@ class ChatbotService:
             
             vectorstore = FAISS.from_documents(split_documents, self.embeddings)
             return vectorstore
-    except Exception as e:
+        except Exception as e:
             print(f"Error in build_vectorstore: {str(e)}")
             traceback.print_exc()
             raise
@@ -165,15 +165,15 @@ def main():
             try:
                 question = input().strip()
                 if not question:
-                continue
+                    continue
                 
                 response = chatbot.get_response(question)
-            print(response)
-            sys.stdout.flush()
+                print(response)
+                sys.stdout.flush()
             
             except EOFError:
                 break
-        except Exception as e:
+            except Exception as e:
                 print(f"Error processing question: {str(e)}")
                 traceback.print_exc()
             sys.stdout.flush()
