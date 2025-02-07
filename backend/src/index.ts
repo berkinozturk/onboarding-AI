@@ -30,6 +30,9 @@ app.use((req, res, next) => {
 app.use(cors({
   origin: [
     'https://v2202502134357312899.happysrv.de',
+    'http://v2202502134357312899.happysrv.de',
+    'v2202502134357312899.happysrv.de',
+    '152.53.127.42',
     'http://localhost:5173'
   ],
   credentials: true,
