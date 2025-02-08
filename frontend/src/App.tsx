@@ -30,18 +30,26 @@ function ProtectedRoute({ children, requiredRole }: { children: React.ReactNode;
 function App() {
   const user = useStore((state) => state.user);
   const setUser = useStore((state) => state.setUser);
+  const initializeStore = useStore((state) => state.initializeStore);
+  const initializeQuestions = useStore((state) => state.initializeQuestions);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const initializeApp = async () => {
       try {
+        setIsLoading(true);
+        console.log('Initializing app...');
+        
+        // First load questions to ensure they're available
+        await initializeQuestions();
+        
+        // Then initialize the store (user, answers, etc.)
         const token = localStorage.getItem('token');
         if (token) {
-          const currentUser = await authApi.getCurrentUser();
-          setUser(currentUser);
+          await initializeStore();
         }
       } catch (error) {
-        console.error('Auth check failed:', error);
+        console.error('App initialization failed:', error);
         localStorage.removeItem('token');
       } finally {
         setIsLoading(false);
@@ -49,7 +57,7 @@ function App() {
     };
 
     initializeApp();
-  }, [setUser]);
+  }, [initializeStore, initializeQuestions]);
 
   if (isLoading) {
     return <div className="flex items-center justify-center min-h-screen">

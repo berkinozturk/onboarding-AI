@@ -1,36 +1,306 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import Layout from '../../components/shared/Layout';
-import ChatInterface from '../../components/employee/ChatInterface';
-import { Award, Trophy, Star, CheckCircle, AlertCircle } from 'lucide-react';
+import { MessageCircle, Trophy, Star, Award, Coffee, Shield, Users, Book, Rocket, Target, Briefcase, Crown, Flag, Heart, Lightbulb, Medal } from 'lucide-react';
 import { useStore } from '../../store';
+import { api } from '../../services/api';
+import type { Question } from '../../types';
+
+// Badge icon mapping
+const BADGE_ICONS: { [key: string]: React.ComponentType<any> } = {
+  coffee: Coffee,
+  shield: Shield,
+  users: Users,
+  star: Star,
+  book: Book,
+  rocket: Rocket,
+  target: Target,
+  award: Award,
+  briefcase: Briefcase,
+  crown: Crown,
+  flag: Flag,
+  heart: Heart,
+  lightbulb: Lightbulb,
+  medal: Medal,
+  trophy: Award
+};
+
+const getCompletionStatus = (answers: Record<string, any>, questions: Question[]) => {
+  if (!answers || Object.keys(answers).length === 0) return 'not_started';
+  
+  const allAnswered = questions.every(q => answers[q.id]);
+  if (!allAnswered) return 'in_progress';
+  
+  const allCorrect = questions.every(q => {
+    const answer = answers[q.id]?.answer;
+    if (q.type === 'boolean') {
+      return answer === true || answer === 'true';
+    } else if (q.type === 'multiple_choice') {
+      return answer === q.correctAnswer;
+    }
+    return true; // Text questions are always considered correct
+  });
+  
+  return allCorrect ? 'completed' : 'almost_there';
+};
+
+const CompletionMessage = ({ status }: { status: string }) => {
+  if (status === 'not_started' || status === 'in_progress') return null;
+
+  return (
+    <div className={`p-4 rounded-lg mb-4 ${
+      status === 'completed' 
+        ? 'bg-green-100 text-green-800' 
+        : 'bg-yellow-100 text-yellow-800'
+    }`}>
+      {status === 'completed' ? (
+        <div className="flex items-center">
+          <span className="text-xl mr-2">🎉</span>
+          <div>
+            <h3 className="font-bold">Congratulations!</h3>
+            <p>You've completed all onboarding tasks successfully!</p>
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-center">
+          <span className="text-xl mr-2">👋</span>
+          <div>
+            <h3 className="font-bold">Almost there!</h3>
+            <p>You're making great progress. Keep going!</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const QuestionItem = ({ question, answer, onAnswer }: { 
+  question: Question; 
+  answer?: any;
+  onAnswer: (questionId: string, value: any) => Promise<void>;
+}) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [textAnswer, setTextAnswer] = useState(answer?.answer || '');
+
+  // Load existing answer when it changes
+  useEffect(() => {
+    if (answer?.answer) {
+      setTextAnswer(answer.answer);
+    }
+  }, [answer?.answer]);
+
+  const handleAnswer = async (value: any) => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      await onAnswer(question.id, value);
+    } catch (error) {
+      console.error('Error submitting answer:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const renderAnswerInput = () => {
+    switch (question.type) {
+      case 'boolean':
+        return (
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => handleAnswer(true)}
+              disabled={isSubmitting}
+              className={`px-4 py-1.5 rounded-lg transition-colors ${
+                answer?.answer === true
+                  ? 'bg-green-600 text-white'
+                  : isSubmitting
+                  ? 'bg-gray-300 cursor-not-allowed'
+                  : 'bg-green-100 text-green-700 hover:bg-green-200'
+              }`}
+            >
+              {isSubmitting ? 'Saving...' : 'Yes'}
+            </button>
+            <button
+              onClick={() => handleAnswer(false)}
+              disabled={isSubmitting}
+              className={`px-4 py-1.5 rounded-lg transition-colors ${
+                answer?.answer === false
+                  ? 'bg-red-600 text-white'
+                  : isSubmitting
+                  ? 'bg-gray-300 cursor-not-allowed'
+                  : 'bg-red-100 text-red-700 hover:bg-red-200'
+              }`}
+            >
+              {isSubmitting ? 'Saving...' : 'No'}
+            </button>
+          </div>
+        );
+
+      case 'text':
+        return (
+          <form 
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleAnswer(textAnswer);
+            }} 
+            className="flex gap-2"
+          >
+            <input
+              type="text"
+              value={textAnswer}
+              onChange={(e) => setTextAnswer(e.target.value)}
+              onClick={(e) => e.currentTarget.select()}
+              disabled={isSubmitting}
+              className="flex-1 px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Type your answer..."
+            />
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className={`bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors ${
+                isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
+            >
+              {isSubmitting ? 'Saving...' : 'Submit'}
+            </button>
+          </form>
+        );
+
+      case 'multiple_choice':
+        return (
+          <div className="space-y-2">
+            {(question.options || []).map((option, index) => (
+              <button
+                key={index}
+                onClick={() => handleAnswer(option)}
+                disabled={isSubmitting}
+                className={`w-full px-4 py-2 text-left rounded-lg transition-colors ${
+                  answer?.answer === option
+                    ? option === question.correctAnswer
+                      ? 'bg-green-600 text-white'
+                      : 'bg-red-600 text-white'
+                    : isSubmitting
+                    ? 'bg-gray-300 cursor-not-allowed'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+      <MessageCircle className="w-5 h-5 text-gray-400 mt-1" />
+      <div className="flex-1">
+        <p className="text-gray-600">{question.text}</p>
+        <div className="flex items-center gap-4 mt-2">
+          {renderAnswerInput()}
+          {answer && (
+            <p className="text-xs text-gray-500">
+              Last modified: {new Date(answer.timestamp).toLocaleString()}
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default function EmployeeOnboarding() {
   const user = useStore((state) => state.user);
   const questions = useStore((state) => state.questions);
   const initializeQuestions = useStore((state) => state.initializeQuestions);
-  const getUnansweredQuestions = useStore((state) => state.getUnansweredQuestions);
   const questionAnswers = useStore((state) => state.questionAnswers);
+  const setUser = useStore((state) => state.setUser);
+  const completeQuestion = useStore((state) => state.completeQuestion);
+  const [answers, setAnswers] = useState<Record<string, any>>({});
 
+  // Initialize questions and fetch answers
   useEffect(() => {
-    initializeQuestions();
-  }, [initializeQuestions]);
+    const initialize = async () => {
+      await initializeQuestions();
+      if (user) {
+        try {
+          const response = await api.get(`/answers/user/${user.id}`);
+          if (response.data) {
+            const answersMap = response.data.reduce((acc: Record<string, any>, answer: any) => {
+              acc[answer.questionId] = {
+                answer: answer.answer === 'true' ? true : answer.answer === 'false' ? false : answer.answer,
+                timestamp: answer.updatedAt || answer.createdAt,
+                questionId: answer.questionId
+              };
+              return acc;
+            }, {});
+            setAnswers(answersMap);
+          }
+        } catch (error) {
+          console.error('Error fetching answers:', error);
+        }
+      }
+    };
+    initialize();
+  }, [initializeQuestions, user]);
+
+  // Update answers when questionAnswers changes
+  useEffect(() => {
+    if (questionAnswers) {
+      const formattedAnswers = Object.entries(questionAnswers).reduce((acc, [key, value]) => {
+        if (value.employeeId === user?.id) {
+          acc[value.questionId] = {
+            answer: value.answer === 'true' ? true : value.answer === 'false' ? false : value.answer,
+            timestamp: value.timestamp,
+            questionId: value.questionId
+          };
+        }
+        return acc;
+      }, {} as Record<string, any>);
+      setAnswers(formattedAnswers);
+    }
+  }, [questionAnswers, user?.id]);
+
+  const handleAnswer = async (questionId: string, value: any) => {
+    try {
+      console.log('Onboarding - handleAnswer called:', {
+        questionId,
+        value,
+        currentUser: user
+      });
+
+      // Call completeQuestion and wait for the response
+      const response = await completeQuestion(questionId, value);
+      console.log('Answer response:', response);
+
+      if (response?.user) {
+        // Update local answers state with the new answer and timestamp from response
+        setAnswers(prev => ({
+          ...prev,
+          [questionId]: {
+            answer: value,
+            timestamp: response.answer.updatedAt,
+            questionId
+          }
+        }));
+      }
+
+    } catch (error) {
+      console.error('Onboarding - Error submitting answer:', error);
+      throw error;
+    }
+  };
 
   if (!user || !questions) {
     return <div>Loading...</div>;
   }
 
-  const unansweredQuestions = getUnansweredQuestions();
-  const isComplete = unansweredQuestions.length === 0;
-
-  // Calculate progress
-  const progress = user.progress || 0;
   const totalXP = user.xp || 0;
   const badges = user.badges || [];
-
-  // Check if all questions have been answered (correctly or incorrectly)
-  const allQuestionsAnswered = Object.values(questionAnswers).filter(
-    answer => answer.employeeId === user.id
-  ).length === questions.length;
+  const progress = Math.round((Object.keys(answers).length / questions.length) * 100);
+  const completionStatus = getCompletionStatus(answers, questions);
 
   return (
     <Layout>
@@ -73,84 +343,49 @@ export default function EmployeeOnboarding() {
               <Award className="w-6 h-6 text-blue-500" />
               <h3 className="text-lg font-semibold">Badges</h3>
             </div>
-            <div className="mt-3 flex gap-2">
-              {badges.map((badge) => (
-                <div
-                  key={badge.id}
-                  className="relative group"
-                >
-                  <img
-                    src={badge.image}
-                    alt={badge.name}
-                    className="w-12 h-12 rounded-full object-cover"
-                  />
-                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                    {badge.name}
+            <div className="mt-3 flex flex-wrap gap-2">
+              {badges.map((badge) => {
+                const IconComponent = BADGE_ICONS[badge.icon.toLowerCase()] || Award;
+                return (
+                  <div
+                    key={badge.id}
+                    className="relative group"
+                  >
+                    <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center">
+                      <IconComponent className="w-6 h-6 text-blue-500" />
+                    </div>
+                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                      {badge.name}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
+              {badges.length === 0 && (
+                <div className="text-sm text-gray-500">No badges earned yet</div>
+              )}
             </div>
           </div>
         </div>
 
-        {allQuestionsAnswered && !isComplete && (
-          <div className="bg-white rounded-lg shadow-lg p-8">
-            <div>
-              <div className="flex items-center gap-4 mb-6">
-                <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
-                  <AlertCircle className="w-8 h-8 text-yellow-600" />
-                </div>
-                <h2 className="text-xl font-bold text-gray-900">
-                  Almost There!
-                </h2>
-              </div>
-              <p className="text-gray-600 mb-4">The following tasks need to be completed correctly:</p>
-              <ul className="list-disc pl-6 space-y-2">
-                {unansweredQuestions.map(question => (
-                  <li key={question.id} className="text-gray-600">
-                    {question.text}
-                  </li>
-                ))}
-              </ul>
-              <p className="mt-4 text-gray-600">
-                Please complete these tasks to finish your onboarding. You may need to coordinate with your team or supervisor for assistance.
-              </p>
-            </div>
-          </div>
-        )}
+        <div className="bg-white rounded-lg shadow-lg p-6">
+          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+            <MessageCircle className="w-6 h-6 text-gray-500" />
+            Onboarding Questions
+          </h2>
 
-        {isComplete && (
-          <div className="bg-white rounded-lg shadow-lg p-8">
-            <div className="text-center">
-              <div className="flex justify-center mb-6">
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
-                  <CheckCircle className="w-10 h-10 text-green-600" />
-                </div>
-              </div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                🎉 Congratulations! Onboarding Complete! 🎉
-              </h2>
-              <p className="text-gray-600 mb-6">
-                You've successfully completed all onboarding tasks and earned:
-              </p>
-              <div className="flex justify-center gap-8 mb-6">
-                <div className="text-center">
-                  <p className="text-3xl font-bold text-yellow-500">{totalXP}</p>
-                  <p className="text-sm text-gray-500">XP Points</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-3xl font-bold text-blue-500">{badges.length}</p>
-                  <p className="text-sm text-gray-500">Badges Earned</p>
-                </div>
-              </div>
-              <p className="text-gray-600">
-                You're now ready to start your journey with us! Check your profile to see all your achievements.
-              </p>
-            </div>
-          </div>
-        )}
+          <CompletionMessage status={completionStatus} />
 
-        <ChatInterface />
+          <div className="space-y-4">
+            {questions.map((question) => (
+              <QuestionItem 
+                key={question.id} 
+                question={question}
+                answer={answers[question.id]}
+                onAnswer={handleAnswer}
+              />
+            ))}
+          </div>
+        </div>
       </div>
     </Layout>
   );

@@ -13,7 +13,7 @@ export default function ChatbotBuddy() {
     // Try to load messages from localStorage
     const savedMessages = localStorage.getItem('chatMessages');
     return savedMessages ? JSON.parse(savedMessages) : [
-      { type: 'bot', text: 'Hi! How can I help you with the onboarding process?' }
+      { type: 'bot', text: 'Hallo! Wie kann ich Ihnen beim Onboarding-Prozess helfen?' }
     ];
   });
   const [userInput, setUserInput] = useState('');
@@ -44,7 +44,7 @@ export default function ChatbotBuddy() {
         console.error('Failed to initialize chatbot:', error);
         setMessages(prev => [...prev, {
           type: 'bot',
-          text: "Sorry, I couldn't initialize properly. Please try refreshing the page."
+          text: "Entschuldigung, ich konnte die Initialisierung nicht richtig durchführen. Bitte versuchen Sie, die Seite zu aktualisieren."
         }]);
         setIsInitializing(false);
       }
@@ -68,7 +68,7 @@ export default function ChatbotBuddy() {
       console.error('Error:', error);
       setMessages(prev => [...prev, {
         type: 'bot',
-        text: "Sorry, I couldn't process your question. Please try again."
+        text: "Leider konnte ich Ihre Frage nicht bearbeiten. Versuchen Sie es bitte noch einmal."
       }]);
     } finally {
       setIsLoading(false);
@@ -147,7 +147,7 @@ export default function ChatbotBuddy() {
               value={userInput}
               onChange={(e) => setUserInput(e.target.value)}
               onKeyDown={handleKeyPress}
-              placeholder="Type your question... (Press Enter to send)"
+              placeholder="Geben Sie Ihre Frage ein ... (Zum Senden die Eingabetaste drücken)"
               disabled={isLoading || isInitializing}
               rows={1}
               className="flex-1 resize-none px-4 py-3 rounded-xl border focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"

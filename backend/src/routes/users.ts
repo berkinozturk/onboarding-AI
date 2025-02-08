@@ -146,7 +146,10 @@ const updateUser = async (req: AuthRequest, res: Response): Promise<void> => {
 
     // Check if user exists
     const user = await prisma.user.findUnique({
-      where: { id }
+      where: { id },
+      include: {
+        badges: true
+      }
     });
 
     if (!user) {
@@ -160,37 +163,59 @@ const updateUser = async (req: AuthRequest, res: Response): Promise<void> => {
       return;
     }
 
-    // Remove sensitive fields from updates unless user is admin
-    if (req.user?.role !== 'admin') {
-      delete updates.role;
-      delete updates.xp;
-      delete updates.level;
-      delete updates.badges;
-      delete updates.completedQuestions;
+    // Handle badge updates
+    let badgeConnections;
+    if (updates.badges) {
+      // Disconnect all existing badges first
+      await prisma.user.update({
+        where: { id },
+        data: {
+          badges: {
+            set: [] // Remove all badge connections
+          }
+        }
+      });
+
+      // Then connect new badges
+      badgeConnections = {
+        connect: updates.badges.map((badgeId: string) => ({ id: badgeId }))
+      };
     }
+
+    // Prepare update data
+    const updateData = {
+      ...updates,
+      xp: updates.xp !== undefined ? parseInt(updates.xp.toString()) : undefined,
+      level: updates.level !== undefined ? parseInt(updates.level.toString()) : undefined,
+      progress: updates.progress !== undefined ? parseInt(updates.progress.toString()) : undefined,
+      badges: badgeConnections
+    };
+
+    // Remove badges from updateData if it's not an array of IDs
+    if (!Array.isArray(updates.badges)) {
+      delete updateData.badges;
+    }
+
+    console.log('Updating user with data:', updateData);
 
     const updatedUser = await prisma.user.update({
       where: { id },
-      data: updates,
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        position: true,
-        startDate: true,
-        xp: true,
-        level: true,
-        badges: true,
-        completedQuestions: true,
-        createdAt: true,
-        updatedAt: true
+      data: updateData,
+      include: {
+        badges: true
       }
     });
 
+    console.log('User updated successfully:', updatedUser);
+
+    // Send response with updated user data
     res.json(updatedUser);
   } catch (error) {
-    res.status(400).json({ error: 'Error updating user' });
+    console.error('Error updating user:', error);
+    res.status(400).json({ 
+      error: 'Error updating user',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 };
 

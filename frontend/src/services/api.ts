@@ -28,7 +28,7 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     console.error('API Error:', error);
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 && window.location.pathname !== '/login') {
       localStorage.removeItem('token');
       window.location.href = '/login';
     }
@@ -54,8 +54,8 @@ export const authApi = {
       return response.data;
     } catch (error) {
       console.error('Login failed:', error);
-      localStorage.removeItem('token');
-      throw error;
+      // Don't remove token on login failure
+      throw new Error('Invalid email or password');
     }
   },
   

@@ -46,7 +46,7 @@ export default function ChatbotConfig() {
     <Layout>
       <div className="p-6">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">Chatbot Configuration</h1>
+          <h1 className="text-2xl font-bold">Onboarding Question Configuration</h1>
           <button 
             onClick={() => {
               setEditingQuestion(null);

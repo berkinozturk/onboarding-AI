@@ -2,7 +2,25 @@ import React, { useState, useEffect } from 'react';
 import { useStore } from '../../store';
 import QuestionForm from '../../components/admin/QuestionForm';
 import type { Question } from '../../types';
-import { Edit2, Trash2, Plus } from 'lucide-react';
+import { Edit2, Trash2, Plus, Coffee, Shield, Users, Star, Book, Rocket, Target, Award, Briefcase, Crown, Flag, Heart, Lightbulb, Medal, Trophy } from 'lucide-react';
+
+const BADGE_ICONS = [
+  { value: 'coffee', label: 'Coffee', icon: Coffee },
+  { value: 'shield', label: 'Shield', icon: Shield },
+  { value: 'users', label: 'Users', icon: Users },
+  { value: 'star', label: 'Star', icon: Star },
+  { value: 'book', label: 'Book', icon: Book },
+  { value: 'rocket', label: 'Rocket', icon: Rocket },
+  { value: 'target', label: 'Target', icon: Target },
+  { value: 'award', label: 'Award', icon: Award },
+  { value: 'briefcase', label: 'Briefcase', icon: Briefcase },
+  { value: 'crown', label: 'Crown', icon: Crown },
+  { value: 'flag', label: 'Flag', icon: Flag },
+  { value: 'heart', label: 'Heart', icon: Heart },
+  { value: 'lightbulb', label: 'Lightbulb', icon: Lightbulb },
+  { value: 'medal', label: 'Medal', icon: Medal },
+  { value: 'trophy', label: 'Trophy', icon: Trophy }
+];
 
 export default function Questions() {
   const [showForm, setShowForm] = useState(false);
@@ -49,7 +67,7 @@ export default function Questions() {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Chatbot Configuration</h1>
+        <h1 className="text-2xl font-bold">Onboarding Questions Configuration</h1>
         <button
           onClick={() => setShowForm(true)}
           className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"

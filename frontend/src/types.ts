@@ -25,13 +25,14 @@ export interface Question {
   badge?: Badge;
 }
 
+export type BadgeIcon = 'star' | 'coffee' | 'shield' | 'users' | 'book' | 'rocket' | 'target' | 'award' | 'briefcase' | 'crown' | 'flag' | 'heart' | 'lightbulb' | 'medal' | 'trophy';
+
 export interface Badge {
-  id?: string;
+  id: string;
   name: string;
   description: string;
-  icon?: string;
-  image: string;
   requiredXP: number;
+  icon: BadgeIcon;
 }
 
 export interface EmployeeFormData {

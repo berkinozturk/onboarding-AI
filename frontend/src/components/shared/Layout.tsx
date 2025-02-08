@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, MessageSquare, User, Briefcase, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, MessageSquare, User, Briefcase, LogOut, FileQuestionIcon } from 'lucide-react';
 import { useStore } from '../../store';
 
 interface Props {
@@ -25,13 +25,13 @@ export default function Layout({ children }: Props) {
   const adminLinks = [
     { to: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/admin/employees', icon: Users, label: 'Employees' },
-    { to: '/admin/chatbot', icon: MessageSquare, label: 'Chatbot Config' },
+    { to: '/admin/chatbot', icon: MessageSquare, label: 'Onboarding Questions' },
   ];
 
   const employeeLinks = [
-    { to: '/employee', icon: MessageSquare, label: 'Onboarding' },
+    { to: '/employee', icon: FileQuestionIcon, label: 'Onboarding' },
     { to: '/employee/profile', icon: User, label: 'Profile' },
-    { to: '/employee/chatbot-buddy', icon: MessageSquare, label: 'Chatbot Buddy' }
+    { to: '/employee/chatbot-buddy', icon: MessageSquare, label: 'AI Buddy' }
   ];
 
   const links = user?.role === 'admin' ? adminLinks : employeeLinks;

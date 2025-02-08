@@ -19,7 +19,7 @@ interface AppState {
   updateProgress: (progress: number) => void;
   addXP: (amount: number) => void;
   addBadge: (badge: Badge) => void;
-  completeQuestion: (questionId: string, answer: string | boolean) => void;
+  completeQuestion: (questionId: string, answer: string | boolean) => Promise<any>;
   setCurrentQuestion: (questionId: string) => void;
   addEmployee: (data: EmployeeFormData) => Promise<void>;
   updateEmployee: (id: string, data: Partial<EmployeeFormData>) => Promise<void>;
@@ -43,7 +43,6 @@ const mockEmployees: User[] = [
   {
     id: '1',
     email: 'admin@skilled.com',
-    password: '123',
     name: 'Admin User',
     role: 'admin',
     department: 'Management',
@@ -58,7 +57,6 @@ const mockEmployees: User[] = [
   {
     id: '2',
     email: 'employee@skilled.com',
-    password: '123',
     name: 'Test Employee',
     role: 'employee',
     department: 'Engineering',
@@ -156,6 +154,13 @@ export const useStore = create<AppState>()(
           return null;
         }
 
+        // First fetch questions to ensure they're always available
+        console.log('Fetching questions...');
+        const questionsResponse = await api.get('/questions');
+        if (questionsResponse.data) {
+          set({ questions: questionsResponse.data });
+        }
+
         console.log('Getting current user...');
         const userResponse = await api.get('/auth/me');
         console.log('Current user:', userResponse.data);
@@ -164,22 +169,7 @@ export const useStore = create<AppState>()(
           const userData = userResponse.data;
           set({ user: userData });
 
-          // Fetch answers for the current user
-          try {
-            console.log('Fetching user answers...');
-            const answersResponse = await api.get('/answers');
-            if (answersResponse.data) {
-              const answers = answersResponse.data.reduce((acc: Record<string, any>, answer: any) => {
-                acc[`${answer.employeeId}-${answer.questionId}`] = answer;
-                return acc;
-              }, {});
-              set({ questionAnswers: answers });
-            }
-          } catch (error) {
-            console.error('Error fetching answers:', error);
-          }
-
-          // If user is admin, fetch employees
+          // If user is admin, fetch employees and their answers
           if (userData.role === 'admin') {
             console.log('Admin user detected, fetching employees...');
             const employeesResponse = await api.get('/users');
@@ -187,6 +177,48 @@ export const useStore = create<AppState>()(
             
             if (employeesResponse.data) {
               set({ employees: employeesResponse.data });
+              
+              // Fetch answers for all employees
+              const allAnswers: Record<string, any> = {};
+              for (const employee of employeesResponse.data) {
+                try {
+                  const answersResponse = await api.get(`/answers/user/${employee.id}`);
+                  if (answersResponse.data) {
+                    answersResponse.data.forEach((answer: any) => {
+                      const key = `${answer.questionId}_${employee.id}`;
+                      allAnswers[key] = {
+                        answer: answer.answer === 'true' ? true : answer.answer === 'false' ? false : answer.answer,
+                        timestamp: answer.createdAt || answer.timestamp,
+                        employeeId: employee.id,
+                        questionId: answer.questionId
+                      };
+                    });
+                  }
+                } catch (error) {
+                  console.error(`Error fetching answers for employee ${employee.id}:`, error);
+                }
+              }
+              set({ questionAnswers: allAnswers });
+            }
+          } else {
+            // For regular employees, just fetch their own answers
+            try {
+              const answersResponse = await api.get(`/answers/user/${userData.id}`);
+              if (answersResponse.data) {
+                const answers = answersResponse.data.reduce((acc: Record<string, any>, answer: any) => {
+                  const key = `${answer.questionId}_${userData.id}`;
+                  acc[key] = {
+                    answer: answer.answer === 'true' ? true : answer.answer === 'false' ? false : answer.answer,
+                    timestamp: answer.createdAt || answer.timestamp,
+                    employeeId: userData.id,
+                    questionId: answer.questionId
+                  };
+                  return acc;
+                }, {});
+                set({ questionAnswers: answers });
+              }
+            } catch (error) {
+              console.error('Error fetching answers:', error);
             }
           }
 
@@ -228,53 +260,90 @@ export const useStore = create<AppState>()(
       try {
         console.log('Fetching questions...');
         const response = await api.get('/questions');
-        console.log('Questions:', response.data);
-        if (response.data) {
-          set({ questions: response.data });
+        console.log('Questions response:', response.data);
+        
+        if (response.data && Array.isArray(response.data)) {
+          // Sort questions by order
+          const sortedQuestions = [...response.data].sort((a, b) => a.order - b.order);
+          console.log('Setting questions in store:', sortedQuestions);
+          set({ questions: sortedQuestions });
+          
+          // Cache questions in localStorage for faster initial load
+          localStorage.setItem('cached_questions', JSON.stringify(sortedQuestions));
+        } else {
+          // If no questions from API, try to load from cache
+          const cachedQuestions = localStorage.getItem('cached_questions');
+          if (cachedQuestions) {
+            console.log('Loading questions from cache');
+            set({ questions: JSON.parse(cachedQuestions) });
+          } else {
+            console.log('No questions available');
+            set({ questions: [] });
+          }
         }
       } catch (error) {
         console.error('Error initializing questions:', error);
+        // Try to load from cache if API fails
+        const cachedQuestions = localStorage.getItem('cached_questions');
+        if (cachedQuestions) {
+          console.log('Loading questions from cache after API error');
+          set({ questions: JSON.parse(cachedQuestions) });
+        }
         throw error;
       }
     },
 
-    completeQuestion: (questionId, answer) =>
-      set((state) => {
-        if (!state.user) return;
+    completeQuestion: async (questionId, answer) => {
+      const state = get();
+      if (!state.user) return;
 
-        const question = state.questions.find(q => q.id === questionId);
-        if (!question) return;
-
-        // Add to completed questions if not already there
-        if (!state.user.completedQuestions.includes(questionId)) {
-          state.user.completedQuestions.push(questionId);
-          
-          // Update progress
-          const newProgress = Math.round(
-            (state.user.completedQuestions.length / state.questions.length) * 100
-          );
-          state.user.progress = newProgress;
-
-          // Update XP
-          state.user.xp += question.xpReward;
-          
-          // Update level
-          state.user.level = Math.floor(state.user.xp / 1000) + 1;
-
-          // Add badge if available
-          if (question.badge && !state.user.badges.find(b => b.id === question.badge?.id)) {
-            state.user.badges.push(question.badge);
-          }
-        }
-
-        // Record the answer
-        state.questionAnswers[`${state.user.id}-${questionId}`] = {
+      try {
+        console.log('Store - completeQuestion called:', {
           questionId,
-          employeeId: state.user.id,
           answer,
-          timestamp: new Date().toISOString()
-        };
-      }),
+          currentUser: state.user
+        });
+        
+        // First update the answer
+        const response = await api.post('/answers', {
+          questionId,
+          answer: answer.toString()
+        });
+
+        console.log('Store - Answer submission response:', response.data);
+
+        if (response.data.user) {
+          // Update state
+          set((state) => {
+            // Update user state
+            state.user = {
+              ...state.user!,
+              xp: response.data.user.xp,
+              level: response.data.user.level,
+              progress: response.data.user.progress,
+              badges: response.data.user.badges || [],
+              completedQuestions: response.data.user.completedQuestions || []
+            };
+
+            // Update question answers with current timestamp
+            const key = `${questionId}_${state.user!.id}`;
+            state.questionAnswers[key] = {
+              questionId,
+              employeeId: state.user!.id,
+              answer: response.data.answer.answer === 'true' ? true :
+                     response.data.answer.answer === 'false' ? false :
+                     response.data.answer.answer,
+              timestamp: response.data.answer.updatedAt
+            };
+          });
+
+          return response.data;
+        }
+      } catch (error) {
+        console.error('Store - Failed to submit answer:', error);
+        throw error;
+      }
+    },
 
     setCurrentQuestion: (questionId) => {
       const state = get();
@@ -292,14 +361,14 @@ export const useStore = create<AppState>()(
       }
     },
 
-    // Add logout function
     logout: () => {
       localStorage.removeItem('token');
       set({ 
         user: null,
         employees: [],
         questions: [],
-        currentQuestionId: null
+        currentQuestionId: null,
+        questionAnswers: {}
       });
     },
 
@@ -324,104 +393,95 @@ export const useStore = create<AppState>()(
     addBadge: (badge) =>
       set((state) => {
         if (state.user && !state.user.badges.find(b => b.id === badge.id)) {
-          // Add badge to user
-          state.user.badges.push({...badge}); // Create a new object to avoid reference issues
-          
-          // Also update the employee in the employees array
-          const employee = state.employees.find(emp => emp.id === state.user?.id);
-          if (employee && !employee.badges.find(b => b.id === badge.id)) {
-            employee.badges.push({...badge}); // Create a new object to avoid reference issues
-          }
+          state.user.badges.push(badge);
         }
       }),
 
-    addEmployee: async (data: EmployeeFormData) => {
+    addEmployee: async (data) => {
       try {
         console.log('Adding employee:', data);
-        const response = await api.post('/users', data);
-        console.log('Add employee response:', response.data);
+        const response = await authApi.register(data);
+        console.log('Add employee response:', response);
         
-        if (response.data) {
-          const newEmployee = {
-            ...response.data,
-            badges: [],
-            completedQuestions: [],
-            progress: 0,
-            level: 1,
-            xp: 0
-          };
-          
-          set((state) => ({
-            employees: [...(state.employees || []), newEmployee]
-          }));
+        if (response.user) {
+          set((state) => {
+            // Initialize employee with default values
+            const newEmployee = {
+              ...response.user,
+              badges: response.user.badges || [],
+              completedQuestions: response.user.completedQuestions || [],
+              progress: response.user.progress || 0,
+              xp: response.user.xp || 0,
+              level: response.user.level || 1
+            };
+            state.employees.push(newEmployee);
+          });
         }
       } catch (error) {
-        console.error('Error adding employee:', error);
+        console.error('Failed to add employee:', error);
         throw error;
       }
     },
 
-    updateEmployee: async (id: string, data: Partial<EmployeeFormData>) => {
+    updateEmployee: async (id, data) => {
       try {
-        console.log('Updating employee:', id, data);
         const response = await api.put(`/users/${id}`, data);
-        console.log('Update employee response:', response.data);
-        
-        if (response.data) {
           set((state) => {
-            const index = state.employees.findIndex(e => e.id === id);
+          const index = state.employees.findIndex(emp => emp.id === id);
             if (index !== -1) {
               state.employees[index] = response.data;
             }
           });
-        }
       } catch (error) {
-        console.error('Error updating employee:', error);
+        console.error('Failed to update employee:', error);
         throw error;
       }
     },
 
-    deleteEmployee: async (id: string) => {
+    deleteEmployee: async (id) => {
       try {
-        console.log('Deleting employee:', id);
         await api.delete(`/users/${id}`);
         set((state) => {
-          state.employees = state.employees.filter(e => e.id !== id);
+          state.employees = state.employees.filter(emp => emp.id !== id);
         });
       } catch (error) {
-        console.error('Error deleting employee:', error);
+        console.error('Failed to delete employee:', error);
         throw error;
       }
     },
 
     calculateEmployeeProgress: (id) => {
-      const employee = get().employees.find((emp) => emp.id === id);
-      if (!employee) return 0;
-      return employee.progress || 0;
+      const state = get();
+      const employee = state.employees.find(emp => emp.id === id);
+      if (!employee || !state.questions.length) return 0;
+
+      // Get all answers for this employee
+      const employeeAnswers = Object.entries(state.questionAnswers)
+        .filter(([_, data]) => data.employeeId === id)
+        .map(([_, data]) => data);
+
+      if (employeeAnswers.length === 0) return 0;
+
+      // Count all answered questions
+      const answeredQuestionsCount = employeeAnswers.length;
+
+      // Calculate progress based on total answered questions
+      return Math.min(100, Math.round((answeredQuestionsCount / state.questions.length) * 100));
     },
 
     addQuestion: async (question) => {
       try {
-        // Add default order if not provided
-        const questionWithOrder = {
-          ...question,
-          order: 0, // Will be updated by the backend
-          options: question.options || [],
-          correctAnswer: question.correctAnswer || ''
-        };
-
-        const response = await api.post('/questions', questionWithOrder);
+        const response = await api.post('/questions', question);
         set((state) => {
           state.questions.push(response.data);
         });
-        return response.data;
       } catch (error) {
         console.error('Failed to add question:', error);
         throw error;
       }
     },
 
-    updateQuestion: async (question: Partial<Question> & { id: string }) => {
+    updateQuestion: async (question) => {
       try {
         const response = await api.put(`/questions/${question.id}`, question);
         set((state) => {
@@ -430,7 +490,6 @@ export const useStore = create<AppState>()(
             state.questions[index] = response.data;
           }
         });
-        return response.data;
       } catch (error) {
         console.error('Failed to update question:', error);
         throw error;
@@ -482,9 +541,11 @@ export const useStore = create<AppState>()(
       
       if (employees.length === 0) return 0;
 
-      const totalProgress = employees.reduce((acc, emp) => {
-        return acc + state.calculateEmployeeProgress(emp.id);
-      }, 0);
+      let totalProgress = 0;
+      for (const employee of employees) {
+        const progress = state.calculateEmployeeProgress(employee.id);
+        totalProgress += progress;
+      }
 
       return Math.round(totalProgress / employees.length);
     },

@@ -107,6 +107,7 @@ class ChatbotService:
                 - Based only on the provided context
                 - Without revealing your internal thought process
                 - Without repeating user messages
+                - Always answer in German
                 
                 Context for answering:
                 {context}"""),

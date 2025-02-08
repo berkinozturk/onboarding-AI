@@ -4,7 +4,7 @@ import axios from 'axios';
 const Chatbot: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
-    { type: 'bot', text: 'Hi! How can I help you with the onboarding process?' }
+    { type: 'bot', text: 'Hallo! Wie kann ich Ihnen beim Onboarding-Prozess helfen?' }
   ]);
   const [userInput, setUserInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -32,7 +32,7 @@ const Chatbot: React.FC = () => {
     } catch (error) {
       setMessages(prev => [...prev, {
         type: 'bot',
-        text: "Sorry, I couldn't process your question. Please try again."
+        text: "Leider konnte ich Ihre Frage nicht bearbeiten. Versuchen Sie es bitte noch einmal."
       }]);
       console.error('Error:', error);
     } finally {
@@ -83,7 +83,7 @@ const Chatbot: React.FC = () => {
               value={userInput}
               onChange={(e) => setUserInput(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="Type your question..."
+              placeholder="Geben Sie Ihre Frage ein..."
               disabled={isLoading}
               className="flex-1 px-4 py-2 border rounded-full focus:outline-none focus:border-green-500"
             />

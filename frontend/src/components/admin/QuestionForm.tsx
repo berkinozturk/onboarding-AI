@@ -1,17 +1,31 @@
 import React, { useState } from 'react';
 import { useStore } from '../../store';
-import type { Question } from '../../types';
+import type { Question, BadgeIcon } from '../../types';
+
+const BADGE_ICONS: { value: BadgeIcon; label: string }[] = [
+  { value: 'coffee', label: 'Coffee' },
+  { value: 'shield', label: 'Shield' },
+  { value: 'users', label: 'Users' },
+  { value: 'star', label: 'Star' },
+  { value: 'book', label: 'Book' },
+  { value: 'rocket', label: 'Rocket' },
+  { value: 'target', label: 'Target' },
+  { value: 'award', label: 'Award' },
+  { value: 'briefcase', label: 'Briefcase' },
+  { value: 'crown', label: 'Crown' },
+  { value: 'flag', label: 'Flag' },
+  { value: 'heart', label: 'Heart' },
+  { value: 'lightbulb', label: 'Lightbulb' },
+  { value: 'medal', label: 'Medal' },
+  { value: 'trophy', label: 'Trophy' }
+];
 
 interface QuestionFormProps {
-  onSuccess?: () => void;
   initialData?: Question;
+  onSuccess: () => void;
 }
 
-export default function QuestionForm({ onSuccess, initialData }: QuestionFormProps) {
-  console.log('QuestionForm component rendered'); // Component render log
-
-  const { addQuestion, updateQuestion } = useStore();
-
+export default function QuestionForm({ initialData, onSuccess }: QuestionFormProps) {
   const [formData, setFormData] = useState({
     text: initialData?.text || '',
     type: initialData?.type || 'boolean',
@@ -19,146 +33,263 @@ export default function QuestionForm({ onSuccess, initialData }: QuestionFormPro
     xpReward: initialData?.xpReward || 50,
     options: initialData?.options || [],
     correctAnswer: initialData?.correctAnswer || '',
-    order: initialData?.order || 0
+    awardBadge: initialData?.badge ? true : false,
+    badge: initialData?.badge ? {
+      id: initialData.badge.id,
+      name: initialData.badge.name,
+      description: initialData.badge.description,
+      icon: initialData.badge.icon || 'star',
+      requiredXP: initialData.badge.requiredXP
+    } : {
+      id: undefined,
+      name: '',
+      description: '',
+      icon: 'star' as BadgeIcon,
+      requiredXP: 50
+    }
   });
 
-  const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [newOption, setNewOption] = useState('');
+  const addQuestion = useStore((state) => state.addQuestion);
+  const updateQuestion = useStore((state) => state.updateQuestion);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log('Form submit event triggered');
-
-    // Log form data
-    console.log('Form data:', formData);
-
-    // Basic validation
-    if (!formData.text || !formData.type || !formData.category) {
-      console.log('Validation failed');
-      setError('Please fill in all required fields');
-      return;
-    }
-
-    setIsSubmitting(true);
-    setError(null);
-
-    try {
-      if (initialData?.id) {
-        console.log('Updating question:', initialData.id);
-        await updateQuestion(initialData.id, formData);
-      } else {
-        console.log('Creating new question');
-        await addQuestion(formData);
-      }
-
-      // Reset form
-      setFormData({
-        text: '',
-        type: 'boolean',
-        category: 'General',
-        xpReward: 50,
-        options: [],
-        correctAnswer: '',
-        order: 0
-      });
-
-      // Call success callback
-      onSuccess?.();
-    } catch (error: any) {
-      console.error('Error details:', error);
-      setError(error.message || 'Failed to save question');
-    } finally {
-      setIsSubmitting(false);
+  const handleAddOption = () => {
+    if (newOption.trim()) {
+      setFormData(prev => ({
+        ...prev,
+        options: [...prev.options, newOption.trim()]
+      }));
+      setNewOption('');
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    console.log('Input changed:', name, value);
+  const handleRemoveOption = (index: number) => {
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'xpReward' ? Number(value) : value
+      options: prev.options.filter((_, i) => i !== index)
     }));
   };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    try {
+      const questionData = {
+        text: formData.text,
+        type: formData.type as 'boolean' | 'text' | 'multiple_choice',
+        category: formData.category,
+        xpReward: Number(formData.xpReward),
+        options: formData.type === 'multiple_choice' ? formData.options : [],
+        correctAnswer: formData.type === 'multiple_choice' ? formData.correctAnswer : '',
+        order: initialData?.order || 0,
+        badge: formData.awardBadge ? {
+          ...formData.badge,
+          id: formData.badge.id || `badge-${Date.now()}`
+        } : undefined
+      };
+
+      if (initialData) {
+        await updateQuestion({ ...questionData, id: initialData.id });
+      } else {
+        await addQuestion(questionData);
+      }
+
+      onSuccess();
+    } catch (error) {
+      console.error('Error saving question:', error);
+      alert('Failed to save question. Please try again.');
+    }
+  };
+
   return (
-    <form 
-      onSubmit={handleSubmit} 
-      className="space-y-4"
-    >
-      {error && (
-        <div className="bg-red-50 text-red-500 p-3 rounded-lg">
-          {error}
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div>
+        <label className="block text-sm font-medium text-gray-700">Question Text</label>
+        <textarea
+          value={formData.text}
+          onChange={(e) => setFormData({ ...formData, text: e.target.value })}
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          rows={3}
+          required
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700">Type</label>
+        <select
+          value={formData.type}
+          onChange={(e) => setFormData({ ...formData, type: e.target.value as Question['type'] })}
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+        >
+          <option value="boolean">Yes/No</option>
+          <option value="text">Text</option>
+          <option value="multiple_choice">Multiple Choice</option>
+        </select>
+      </div>
+
+      {formData.type === 'multiple_choice' && (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Options</label>
+            <div className="mt-2 space-y-2">
+              {formData.options.map((option, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="correctAnswer"
+                    checked={option === formData.correctAnswer}
+                    onChange={() => setFormData({ ...formData, correctAnswer: option })}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="flex-1">{option}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveOption(index)}
+                    className="text-red-600 hover:text-red-800"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+            <div className="mt-2 flex gap-2">
+              <input
+                type="text"
+                value={newOption}
+                onChange={(e) => setNewOption(e.target.value)}
+                className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                placeholder="Add new option"
+              />
+              <button
+                type="button"
+                onClick={handleAddOption}
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200"
+              >
+                Add
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
       <div>
-        <label className="block text-sm font-medium text-gray-700">Question Text</label>
-        <textarea
-          name="text"
-          value={formData.text}
-          onChange={handleChange}
-          required
+        <label className="block text-sm font-medium text-gray-700">Category</label>
+        <select
+          value={formData.category}
+          onChange={(e) => setFormData({ ...formData, category: e.target.value })}
           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-          rows={3}
-        />
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Type</label>
-          <select
-            name="type"
-            value={formData.type}
-            onChange={handleChange}
-            required
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-          >
-            <option value="boolean">Yes/No</option>
-            <option value="text">Text</option>
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Category</label>
-          <input
-            type="text"
-            name="category"
-            value={formData.category}
-            onChange={handleChange}
-            required
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-          />
-        </div>
+        >
+          <option value="General">General</option>
+          <option value="Office Navigation">Office Navigation</option>
+          <option value="Safety">Safety</option>
+          <option value="Team Building">Team Building</option>
+        </select>
       </div>
 
       <div>
         <label className="block text-sm font-medium text-gray-700">XP Reward</label>
         <input
           type="number"
-          name="xpReward"
           value={formData.xpReward}
-          onChange={handleChange}
-          required
-          min={0}
+          onChange={(e) => setFormData({ ...formData, xpReward: parseInt(e.target.value) })}
           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          min="0"
+          required
         />
       </div>
 
-      <div className="flex justify-end space-x-3">
+      <div className="space-y-4">
+        <div className="flex items-center">
+          <input
+            type="checkbox"
+            id="awardBadge"
+            checked={formData.awardBadge}
+            onChange={(e) => setFormData({ ...formData, awardBadge: e.target.checked })}
+            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+          />
+          <label htmlFor="awardBadge" className="ml-2 block text-sm text-gray-900">
+            Award Badge for Completion
+          </label>
+        </div>
+
+        {formData.awardBadge && (
+          <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Badge Name</label>
+              <input
+                type="text"
+                value={formData.badge.name}
+                onChange={(e) => setFormData({
+                  ...formData,
+                  badge: { ...formData.badge, name: e.target.value }
+                })}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                required={formData.awardBadge}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Badge Description</label>
+              <textarea
+                value={formData.badge.description}
+                onChange={(e) => setFormData({
+                  ...formData,
+                  badge: { ...formData.badge, description: e.target.value }
+                })}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                rows={2}
+                required={formData.awardBadge}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Badge Icon</label>
+              <select
+                value={formData.badge.icon}
+                onChange={(e) => setFormData({
+                  ...formData,
+                  badge: { ...formData.badge, icon: e.target.value as BadgeIcon }
+                })}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                required={formData.awardBadge}
+              >
+                {BADGE_ICONS.map(({ value, label }) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Required XP</label>
+              <input
+                type="number"
+                value={formData.badge.requiredXP}
+                onChange={(e) => setFormData({
+                  ...formData,
+                  badge: { ...formData.badge, requiredXP: parseInt(e.target.value) }
+                })}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                min="0"
+                required={formData.awardBadge}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="flex justify-end gap-3">
         <button
           type="button"
-          onClick={() => onSuccess?.()}
-          className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          onClick={() => onSuccess()}
+          className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
         >
           Cancel
         </button>
         <button
           type="submit"
-          disabled={isSubmitting}
-          className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
         >
-          {isSubmitting ? 'Saving...' : initialData ? 'Update Question' : 'Add Question'}
+          {initialData ? 'Update' : 'Add'} Question
         </button>
       </div>
     </form>

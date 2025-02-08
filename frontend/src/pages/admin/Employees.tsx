@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '../../components/shared/Layout';
-import { User as UserIcon, UserPlus, Edit, Trash2, X, Search, Eye, EyeOff } from 'lucide-react';
+import { User as UserIcon, UserPlus, Edit, Trash2, X, Search, Eye, EyeOff, Coffee, Shield, Users, Star, Book, Rocket, Target, Award, Briefcase, Crown, Flag, Heart, Lightbulb, Medal, Trophy } from 'lucide-react';
 import { useStore } from '../../store';
 import type { User, EmployeeFormData } from '../../types';
 
@@ -23,6 +23,25 @@ const formatDate = (dateString: string) => {
     month: '2-digit',
     year: 'numeric'
   });
+};
+
+// Add badge icon mapping
+const BADGE_ICONS: { [key: string]: React.ComponentType<any> } = {
+  coffee: Coffee,
+  shield: Shield,
+  users: Users,
+  star: Star,
+  book: Book,
+  rocket: Rocket,
+  target: Target,
+  award: Award,
+  briefcase: Briefcase,
+  crown: Crown,
+  flag: Flag,
+  heart: Heart,
+  lightbulb: Lightbulb,
+  medal: Medal,
+  trophy: Award
 };
 
 export default function Employees() {
@@ -278,19 +297,18 @@ export default function Employees() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex -space-x-2">
-                        {employee.badges.map((badge) => (
-                          <div
-                            key={badge.id}
-                            className="w-8 h-8 rounded-full border-2 border-white overflow-hidden"
-                            title={badge.name}
-                          >
-                            <img
-                              src={badge.image}
-                              alt={badge.name}
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                        ))}
+                        {employee.badges.map((badge) => {
+                          const IconComponent = BADGE_ICONS[badge.icon] || Award;
+                          return (
+                            <div
+                              key={badge.id}
+                              className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center"
+                              title={badge.name}
+                            >
+                              <IconComponent className="w-5 h-5 text-blue-600" />
+                            </div>
+                          );
+                        })}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">

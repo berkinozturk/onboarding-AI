@@ -62,7 +62,7 @@ router.post('/', auth, async (req: AuthRequest, res: Response, next: NextFunctio
       return res.status(404).json({ error: 'Question not found' });
     }
 
-    // Then check if the user exists
+    // Then check if the user exists and get their current state
     const user = await prisma.user.findUnique({
       where: { id: userId },
       include: {
@@ -74,84 +74,137 @@ router.post('/', auth, async (req: AuthRequest, res: Response, next: NextFunctio
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Create or update answer
-    const userAnswer = await prisma.answer.upsert({
+    // Find existing answer
+    const existingAnswer = await prisma.answer.findFirst({
       where: {
-        userId_questionId: {
-          userId,
-          questionId
-        }
-      },
-      create: {
-        answer: String(answer),
-        userId,
-        questionId
-      },
-      update: {
-        answer: String(answer)
+        questionId,
+        userId
       }
     });
 
-    console.log('Answer saved:', userAnswer);
+    // Calculate XP change based on answer change
+    let xpChange = 0;
+    let shouldAddBadge = false;
+    let shouldRemoveBadge = false;
 
-    // Parse completed questions
-    let completedQuestions = user.completedQuestions ? JSON.parse(user.completedQuestions) : [];
+    if (question.type === 'boolean') {
+      const boolAnswer = answer === 'true' || answer === true;
+      const prevBoolAnswer = existingAnswer ? 
+        existingAnswer.answer === 'true' || existingAnswer.answer === true : 
+        false;
 
-    // Add to completed questions if not already there
-    if (!completedQuestions.includes(questionId)) {
-      completedQuestions.push(questionId);
-
-      // Calculate new progress
-      const totalQuestions = await prisma.question.count();
-      const newProgress = Math.round((completedQuestions.length / totalQuestions) * 100);
-      console.log('Calculated new progress:', { completedQuestions: completedQuestions.length, totalQuestions, newProgress });
-
-      // Update user with badge if available and new progress
-      const updateData: any = {
-        completedQuestions: JSON.stringify(completedQuestions),
-        xp: { increment: question.xpReward },
-        progress: newProgress // Save progress to database
-      };
-
-      if (question.badge && !user.badges.some(b => b.id === question.badge?.id)) {
-        updateData.badges = {
-          connect: { id: question.badge.id }
-        };
+      if (!prevBoolAnswer && boolAnswer) {
+        // Changed from No/null to Yes
+        xpChange = question.xpReward;
+        shouldAddBadge = true;
+      } else if (prevBoolAnswer && !boolAnswer) {
+        // Changed from Yes to No
+        xpChange = -question.xpReward;
+        shouldRemoveBadge = true;
       }
+    } else if (question.type === 'multiple_choice') {
+      const isCorrect = answer === question.correctAnswer;
+      const wasCorrect = existingAnswer?.answer === question.correctAnswer;
 
-      // Update user
-      const updatedUser = await prisma.user.update({
-        where: { id: userId },
-        data: updateData,
-        include: {
-          badges: true
-        }
-      });
-
-      console.log('User updated with new progress:', updatedUser);
-
-      return res.json({
-        answer: {
-          ...userAnswer,
-          answer: userAnswer.answer === 'true' ? true : userAnswer.answer === 'false' ? false : userAnswer.answer
-        },
-        user: {
-          ...updatedUser,
-          completedQuestions
-        }
-      });
+      if (!wasCorrect && isCorrect) {
+        xpChange = question.xpReward;
+        shouldAddBadge = true;
+      } else if (wasCorrect && !isCorrect) {
+        xpChange = -question.xpReward;
+        shouldRemoveBadge = true;
+      }
     }
 
-    return res.json({
-      answer: {
-        ...userAnswer,
-        answer: userAnswer.answer === 'true' ? true : userAnswer.answer === 'false' ? false : userAnswer.answer
-      },
-      user: {
-        ...user,
-        completedQuestions
+    // Save or update the answer
+    const savedAnswer = existingAnswer ?
+      await prisma.answer.update({
+        where: { id: existingAnswer.id },
+        data: {
+          answer: answer.toString(),
+          updatedAt: new Date()
+        }
+      }) :
+      await prisma.answer.create({
+        data: {
+          questionId,
+          userId,
+          answer: answer.toString(),
+          updatedAt: new Date()
+        }
+      });
+
+    // Calculate new XP and progress
+    const newXP = Math.max(0, user.xp + xpChange);
+    const newLevel = Math.floor(newXP / 1000) + 1;
+
+    // Get all answers for progress calculation
+    const allAnswers = await prisma.answer.findMany({
+      where: { userId },
+      include: { question: true }
+    });
+
+    // Calculate progress based on correct answers
+    const totalQuestions = await prisma.question.count();
+    let correctAnswers = allAnswers.filter(ans => {
+      if (ans.question.type === 'boolean') {
+        return ans.answer === 'true';
+      } else if (ans.question.type === 'multiple_choice') {
+        return true; // Count all multiple choice answers
+      } else if (ans.question.type === 'text') {
+        return true; // Count all text answers
+      }
+      return false;
+    }).length;
+
+    const newProgress = Math.round((correctAnswers / totalQuestions) * 100);
+
+    // Update user data
+    let updateData: any = {
+      xp: newXP,
+      level: newLevel,
+      progress: newProgress
+    };
+
+    // Handle badge updates
+    if (shouldAddBadge && question.badge && !user.badges.some(b => b.id === question.badge?.id)) {
+      updateData.badges = {
+        connect: { id: question.badge.id }
+      };
+    } else if (shouldRemoveBadge && question.badge) {
+      updateData.badges = {
+        disconnect: { id: question.badge.id }
+      };
+    }
+
+    // Update user
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: updateData,
+      include: {
+        badges: true
       }
     });
+
+    console.log('User updated successfully:', {
+      xpChange,
+      newXP,
+      newLevel,
+      newProgress,
+      badges: updatedUser.badges.map(b => b.id)
+    });
+
+    // Send response with updated data
+    res.json({
+      answer: {
+        ...savedAnswer,
+        answer: savedAnswer.answer === 'true' ? true : 
+                savedAnswer.answer === 'false' ? false : 
+                savedAnswer.answer,
+        updatedAt: savedAnswer.updatedAt.toISOString()
+      },
+      user: updatedUser
+    });
+
   } catch (error) {
     console.error('Error submitting answer:', error);
     next(error);
