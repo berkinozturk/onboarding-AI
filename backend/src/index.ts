@@ -52,12 +52,12 @@ app.get('/', (req, res) => {
 });
 
 // API Routes
-app.use('/auth', authRoutes);
-app.use('/users', userRoutes);
-app.use('/questions', questionRoutes);
-app.use('/answers', answerRoutes);
-app.use('/badges', badgeRoutes);
-app.use('/chatbot', chatbotRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/questions', questionRoutes);
+app.use('/api/answers', answerRoutes);
+app.use('/api/badges', badgeRoutes);
+app.use('/api/chatbot', chatbotRoutes);
 
 const PORT = parseInt(process.env.PORT || '3000', 10);
 

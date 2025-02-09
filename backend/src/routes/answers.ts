@@ -90,9 +90,9 @@ router.post('/', auth, async (req: AuthRequest, res: Response, next: NextFunctio
     if (question.type === 'boolean') {
       const boolAnswer = answer === 'true' || answer === true;
       const prevBoolAnswer = existingAnswer ? 
-        existingAnswer.answer === 'true' || existingAnswer.answer === true : 
+        existingAnswer.answer === 'true' : 
         false;
-
+      
       if (!prevBoolAnswer && boolAnswer) {
         // Changed from No/null to Yes
         xpChange = question.xpReward;
